@@ -31,6 +31,7 @@ rule expr = parse
   | "<=" { LEQ }
   | "&&" { LAND }
   | "||" { LOR }
+  | ('#' +) { DOWNS(String.length (Lexing.lexeme lexbuf)) }
   | (digit+) { NUMCONST(Lexing.lexeme lexbuf) }
   | identifier {
         let tok = Lexing.lexeme lexbuf in
@@ -47,6 +48,7 @@ rule expr = parse
           | "next"   -> NEXT
           | "prev"   -> PREV
           | "box"    -> BOX
+          | "unbox"  -> UNBOX
           | other    -> VAR(other)
       }
   | eof { EOI }

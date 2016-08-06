@@ -1,0 +1,7 @@
+letrec powersub = \m.
+  if m == 0 then next 1 else next (x * prev (powersub (m - 1)))
+in
+let power = \nb.
+  unbox u = nb in next (box (\x. prev (powersub u)))
+in
+  power 2

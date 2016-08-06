@@ -6,7 +6,8 @@
 %token<Types.var_name> VAR
 %token LET LETREC IN IF THEN ELSE
 %token LPAREN RPAREN DEFEQ LAMBDA FIX DOT EOI
-%token NEXT PREV BOX
+%token NEXT PREV BOX UNBOX
+%token<int> DOWNS
 %token PLUS MINUS TIMES DIVIDES
 %token EQUAL GT LT GEQ LEQ LAND LOR TRUE FALSE
 
@@ -19,9 +20,11 @@ main:
   | xplet EOI { $1 }
 ;
 xplet:
-  | LET VAR DEFEQ xplet IN xplet    { UTApply(UTLambda($2, $6), $4) }
-  | LETREC VAR DEFEQ xplet IN xplet { UTApply(UTLambda($2, $6), UTFixPoint($2, $4)) }
-  | xpif                            { $1 }
+  | LET VAR DEFEQ xplet IN xplet         { UTApply(UTLambda($2, $6), $4) }
+  | LETREC VAR DEFEQ xplet IN xplet      { UTApply(UTLambda($2, $6), UTFixPoint($2, $4)) }
+  | UNBOX VAR DEFEQ xplet IN xplet       { UTUnbox($2, 0, $4, $6) }
+  | UNBOX VAR DEFEQ DOWNS xplet IN xplet { UTUnbox($2, $4, $5, $7) }
+  | xpif                                 { $1 }
 ;
 xpif:
   | IF xplet THEN xplet ELSE xplet { UTIfThenElse($2, $4, $6) }
@@ -29,6 +32,7 @@ xpif:
 ;
 xpfun:
   | LAMBDA VAR DOT xplet { UTLambda($2, $4) }
+  | FIX VAR DOT xplet    { UTFixPoint($2, $4) }
   | xplor                { $1 }
 ;
 lorop:
@@ -67,6 +71,9 @@ xpplus:
 ;
 xpapp:
   | xpapp xpbot { UTApply($1, $2) }
+  | NEXT xpbot  { UTNext($2) }
+  | PREV xpbot  { UTPrev($2) }
+  | BOX xpbot   { UTBox($2) }
   | xpbot       { $1 }
 ;
 binop:
