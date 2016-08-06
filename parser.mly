@@ -1,20 +1,20 @@
 %{
   open Types
 
-  type range_kind = Token of Range.t | Untyped of untyped_tree
+  type range_kind = Token of Range.t | Source of source_tree
 
 
   let make_range rngknd1 rngknd2 =
     let extract_range rngknd =
       match rngknd with
       | (Token rng)        -> rng
-      | (Untyped (_, rng)) -> rng
+      | (Source (_, rng)) -> rng
     in
       Range.unite (extract_range rngknd1) (extract_range rngknd2)
 
   let binary_operator left op right =
     let (opnm, oprng) = op in
-    let rng = make_range (Untyped left) (Untyped right) in
+    let rng = make_range (Source left) (Source right) in
       (SrcApply((SrcApply((SrcContentOf(opnm), oprng), left), Range.dummy "lor"), right), rng)
 
 %}
@@ -30,7 +30,7 @@
 %token<Range.t> EQUAL GT LT GEQ LEQ LAND LOR TRUE FALSE
 
 %start main
-%type<Types.untyped_tree> main
+%type<Types.source_tree> main
 
 %%
 
@@ -39,27 +39,27 @@ main:
 ;
 xplet:
   | LET OVAR DEFEQ xplet IN xplet {
-        let rng = make_range (Token $1) (Untyped $6) in
+        let rng = make_range (Token $1) (Source $6) in
           (SrcApply((SrcLambda($2, $6), Range.dummy "let1"), $4), rng)
       }
   | LETREC OVAR DEFEQ xplet IN xplet {
-        let rng = make_range (Token $1) (Untyped $6) in
+        let rng = make_range (Token $1) (Source $6) in
           (SrcApply((SrcLambda($2, $6), Range.dummy "letrec1"), (SrcFixPoint($2, $4), Range.dummy "letrec2")), rng)
       }
-  | UNBOX PVAR DEFEQ xplet IN xplet { (SrcUnbox($2, 0, $4, $6), make_range (Token $1) (Untyped $6)) }
+  | UNBOX PVAR DEFEQ xplet IN xplet { (SrcUnbox($2, 0, $4, $6), make_range (Token $1) (Source $6)) }
   | UNBOX PVAR DEFEQ DOWNS xplet IN xplet {
         let (downi, _) = $4 in
-          (SrcUnbox($2, downi, $5, $7), make_range (Token $1) (Untyped $7))
+          (SrcUnbox($2, downi, $5, $7), make_range (Token $1) (Source $7))
       }
   | xpif { $1 }
 ;
 xpif:
-  | IF xplet THEN xplet ELSE xplet { (SrcIfThenElse($2, $4, $6), make_range (Token $1) (Untyped $6)) }
+  | IF xplet THEN xplet ELSE xplet { (SrcIfThenElse($2, $4, $6), make_range (Token $1) (Source $6)) }
   | xpfun                          { $1 }
 ;
 xpfun:
-  | LAMBDA OVAR DOT xplet { (SrcLambda($2, $4), make_range (Token $1) (Untyped $4)) }
-  | FIX OVAR DOT xplet    { (SrcFixPoint($2, $4), make_range (Token $1) (Untyped $4)) }
+  | LAMBDA OVAR DOT xplet { (SrcLambda($2, $4), make_range (Token $1) (Source $4)) }
+  | FIX OVAR DOT xplet    { (SrcFixPoint($2, $4), make_range (Token $1) (Source $4)) }
   | xplor                 { $1 }
 ;
 lorop:
@@ -97,10 +97,10 @@ xpplus:
   | xpapp               { $1 }
 ;
 xpapp:
-  | xpapp xpbot { (SrcApply($1, $2), make_range (Untyped $1) (Untyped $2)) }
-  | NEXT xpbot  { (SrcNext($2), make_range (Token $1) (Untyped $2)) }
-  | PREV xpbot  { (SrcPrev($2), make_range (Token $1) (Untyped $2)) }
-  | BOX xpbot   { (SrcBox($2), make_range (Token $1) (Untyped $2)) }
+  | xpapp xpbot { (SrcApply($1, $2), make_range (Source $1) (Source $2)) }
+  | NEXT xpbot  { (SrcNext($2), make_range (Token $1) (Source $2)) }
+  | PREV xpbot  { (SrcPrev($2), make_range (Token $1) (Source $2)) }
+  | BOX xpbot   { (SrcBox($2), make_range (Token $1) (Source $2)) }
   | xpbot       { $1 }
 ;
 binop:
