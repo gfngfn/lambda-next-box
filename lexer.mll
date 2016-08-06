@@ -34,9 +34,9 @@ rule expr = parse
   | "<=" { LEQ(get_range lexbuf) }
   | "&&" { LAND(get_range lexbuf) }
   | "||" { LOR(get_range lexbuf) }
-  | ('#' +) { DOWNS(get_range lexbuf, String.length (Lexing.lexeme lexbuf)) }
-  | (digit +) { NUMCONST(get_range lexbuf, Lexing.lexeme lexbuf) }
-  | ("@" identifier) { PVAR(get_range lexbuf, Lexing.lexeme lexbuf) }
+  | ('#' +) { DOWNS(String.length (Lexing.lexeme lexbuf), get_range lexbuf) }
+  | (digit +) { INTCONST(Lexing.lexeme lexbuf, get_range lexbuf) }
+  | ("@" identifier) { PVAR(Lexing.lexeme lexbuf, get_range lexbuf) }
   | identifier {
         let rng = get_range lexbuf in
         let tok = Lexing.lexeme lexbuf in
@@ -54,7 +54,7 @@ rule expr = parse
           | "prev"   -> PREV(rng)
           | "box"    -> BOX(rng)
           | "unbox"  -> UNBOX(rng)
-          | _        -> OVAR(rng, tok)
+          | _        -> OVAR(tok, rng)
       }
   | eof { EOI }
   | _ as c { raise (Error("illegal token '" ^ (String.make 1 c) ^ "'")) }
