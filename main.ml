@@ -8,7 +8,7 @@ let _ =
     try
       let filename_in = Sys.argv.(1) in
       let fin = open_in filename_in in
-      let utast = Parser.main Lexer.expr (Lexing.from_channel fin) in
+      let utast = Parser.main Lexer.main (Lexing.from_channel fin) in
         print_endline (string_of_untyped_tree utast)
     with
     | Lexer.Error(s)      -> print_endline ("! [ERROR in LEXER] " ^ s)

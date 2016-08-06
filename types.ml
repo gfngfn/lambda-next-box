@@ -1,7 +1,8 @@
 
 type var_name = string
 
-type untyped_tree =
+type untyped_tree = untyped_tree_main * Range.t
+and untyped_tree_main =
   | UTContentOf  of var_name
   | UTApply      of untyped_tree * untyped_tree
   | UTLambda     of var_name * untyped_tree
@@ -17,7 +18,8 @@ type untyped_tree =
 
 let rec string_of_untyped_tree utast =
   let iter = string_of_untyped_tree in
-    match utast with
+  let (utastmain, _) = utast in
+    match utastmain with
     | UTContentOf(varnm)                   -> varnm
     | UTApply(utast1, utast2)              -> "(" ^ (iter utast1) ^ " " ^ (iter utast2) ^ ")"
     | UTLambda(varnm, utast1)              -> "(\\" ^ varnm ^ ". " ^ (iter utast1) ^ ")"

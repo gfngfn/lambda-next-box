@@ -2,6 +2,9 @@
   open Parser
 
   exception Error of string
+
+
+  let get_range = Range.from_lexer
 }
 
 let space = [' ' '\t']
@@ -10,46 +13,57 @@ let digit = ['0'-'9']
 let capital = ['A'-'Z']
 let small = ['a'-'z']
 let latin = ( small | capital )
-let identifier = (small (digit | latin | "-")*)
+let identifier = (small (digit | latin | "_")*)
 
 rule expr = parse
   | space { expr lexbuf }
-  | break { expr lexbuf }
-  | "("  { LPAREN }
-  | ")"  { RPAREN }
-  | "+"  { PLUS }
-  | "-"  { MINUS }
-  | "*"  { TIMES }
-  | "/"  { DIVIDES }
-  | "."  { DOT }
-  | "\\" { LAMBDA }
-  | "="  { DEFEQ }
-  | "==" { EQUAL }
-  | ">"  { GT }
-  | "<"  { LT }
-  | ">=" { GEQ }
-  | "<=" { LEQ }
-  | "&&" { LAND }
-  | "||" { LOR }
-  | ('#' +) { DOWNS(String.length (Lexing.lexeme lexbuf)) }
-  | (digit+) { NUMCONST(Lexing.lexeme lexbuf) }
+  | break { begin Range.update_line lexbuf ; expr lexbuf end }
+  | "("  { LPAREN(get_range lexbuf) }
+  | ")"  { RPAREN(get_range lexbuf) }
+  | "+"  { PLUS(get_range lexbuf) }
+  | "-"  { MINUS(get_range lexbuf) }
+  | "*"  { TIMES(get_range lexbuf) }
+  | "/"  { DIVIDES(get_range lexbuf) }
+  | "."  { DOT(get_range lexbuf) }
+  | "\\" { LAMBDA(get_range lexbuf) }
+  | "="  { DEFEQ(get_range lexbuf) }
+  | "==" { EQUAL(get_range lexbuf) }
+  | ">"  { GT(get_range lexbuf) }
+  | "<"  { LT(get_range lexbuf) }
+  | ">=" { GEQ(get_range lexbuf) }
+  | "<=" { LEQ(get_range lexbuf) }
+  | "&&" { LAND(get_range lexbuf) }
+  | "||" { LOR(get_range lexbuf) }
+  | ('#' +) { DOWNS(get_range lexbuf, String.length (Lexing.lexeme lexbuf)) }
+  | (digit +) { NUMCONST(get_range lexbuf, Lexing.lexeme lexbuf) }
+  | ("@" identifier) { PVAR(get_range lexbuf, Lexing.lexeme lexbuf) }
   | identifier {
+        let rng = get_range lexbuf in
         let tok = Lexing.lexeme lexbuf in
           match tok with
-          | "let"    -> LET
-          | "in"     -> IN
-          | "letrec" -> LETREC
-          | "fix"    -> FIX
-          | "if"     -> IF
-          | "then"   -> THEN
-          | "else"   -> ELSE
-          | "true"   -> TRUE
-          | "false"  -> FALSE
-          | "next"   -> NEXT
-          | "prev"   -> PREV
-          | "box"    -> BOX
-          | "unbox"  -> UNBOX
-          | other    -> VAR(other)
+          | "let"    -> LET(rng)
+          | "in"     -> IN(rng)
+          | "letrec" -> LETREC(rng)
+          | "fix"    -> FIX(rng)
+          | "if"     -> IF(rng)
+          | "then"   -> THEN(rng)
+          | "else"   -> ELSE(rng)
+          | "true"   -> TRUE(rng)
+          | "false"  -> FALSE(rng)
+          | "next"   -> NEXT(rng)
+          | "prev"   -> PREV(rng)
+          | "box"    -> BOX(rng)
+          | "unbox"  -> UNBOX(rng)
+          | _        -> OVAR(rng, tok)
       }
   | eof { EOI }
   | _ as c { raise (Error("illegal token '" ^ (String.make 1 c) ^ "'")) }
+
+
+{
+  let main lexbuf =
+    begin
+      Range.initialize_for_lexer () ;
+      expr lexbuf
+    end
+}
