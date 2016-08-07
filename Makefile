@@ -1,4 +1,4 @@
-SRCS=range.mli range.ml types.ml parser.mli parser.ml lexer.ml typeenv.mli typeenv.ml subst.ml primitives.ml typecheck.ml evaluator.mli evaluator.ml main.ml
+SRCS=range.mli range.ml types.ml parser.mli parser.ml lexer.ml typeenv.mli typeenv.ml subst.ml primitives.ml typecheck.ml evaluator.mli evaluator.ml tohtml.mli tohtml.ml main.ml
 
 ifeq ($(OS), Windows_NT)
   TARGET=bin/lambda-next-box.exe

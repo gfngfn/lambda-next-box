@@ -291,3 +291,14 @@ let main (ast : abstract_tree) =
       | (AfterFirstTrial, Stable) -> routine FirstTrial (layer + 1) res
   in
     routine FirstTrial 0 ast
+
+
+let trace (ast : abstract_tree) =
+  let rec routine (tr : trial) (layer : int) (ast : abstract_tree) =
+    let (state, res) = eval layer ast in
+      match (tr, state) with
+      | (_, Changed)              -> res :: (routine AfterFirstTrial layer res)
+      | (FirstTrial, Stable)      -> []
+      | (AfterFirstTrial, Stable) -> routine FirstTrial (layer + 1) res
+  in
+    routine FirstTrial 0 ast

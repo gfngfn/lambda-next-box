@@ -8,3 +8,4 @@ parser.output
 *.o
 *.cmi
 bin/lambda-next-box
+*.html
