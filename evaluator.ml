@@ -139,20 +139,34 @@ let rec eval (evlayer : int) (ast : abstract_tree) =
   (* -- values -- *)
     | OrdContentOf(_)  -> (Stable, ast)
     | PermContentOf(_) -> (Stable, ast)
-    | Lambda(_, _)     -> (Stable, ast)
     | IntConst(_)      -> (Stable, ast)
     | BoolConst(_)     -> (Stable, ast)
 
   (* -- non-values -- *)
 
-    | FixPoint(ovnm, ast1) ->
+    | Lambda(ovnm, ast1) ->
         if evlayer = layer then
-          (Changed, replace ast1 ovnm ast)
+          (Stable, ast)
         else if evlayer > layer then
           (Stable, ast)
         else (* if evlayer < layer *)
           let (state1, res1) = eval evlayer ast1 in
+            (state1, (Lambda(ovnm, res1), layer))
+
+    | FixPoint(ovnm, ast1) ->
+        if evlayer = layer then
+begin print_endline "****FIX1****" ; (* test *)
+          (Changed, beta_reduction ast1 ovnm ast)
+end (* test *)
+        else if evlayer > layer then
+begin print_endline "****FIX2****" ; (* test *)
+          (Stable, ast)
+end (* test *)
+        else (* if evlayer < layer *)
+begin print_endline "****FIX3****" ; (* test *)
+          let (state1, res1) = eval evlayer ast1 in
             (state1, (FixPoint(ovnm, res1), layer))
+end(* test *)
 
     | IfThenElse(ast0, ast1, ast2) ->
         if evlayer = layer then
@@ -200,7 +214,7 @@ let rec eval (evlayer : int) (ast : abstract_tree) =
           begin
             match (state1, res1) with
             | (Changed, _)                        -> (Changed, (Unbox(pvnm, i, res1, ast2), layer))
-            | (Stable, (Box(res1sub), _))         -> (Changed, replace ast2 pvnm ast1)
+            | (Stable, (Box(res1sub), _))         -> (Changed, replace ast2 pvnm res1sub)
             | (Stable, (Unbox(pvnm1, j, ast11, ast12), _))
                 when not (emerge_free pvnm1 ast2) -> (Changed, (Unbox(pvnm1, i + j, ast11, (Unbox(pvnm, i, ast12, ast2), layer)), layer))
             | (Stable, _)                         ->
@@ -220,37 +234,49 @@ let rec eval (evlayer : int) (ast : abstract_tree) =
           end
 
     | Apply(ast1, ast2) ->
-       if evlayer = layer then
-         let (state1, res1) = eval evlayer ast1 in
-         begin
-           match state1 with
-           | Changed -> (Changed, (Apply(res1, ast2), layer))
-           | Stable  ->
-               let (state2, res2) = eval evlayer ast2 in
-               begin
-                 match state2 with
-                 | Changed -> (Changed, (Apply(res1, res2), layer))
-                 | Stable  ->
-                     begin
-                       match res1 with
-                       | (Lambda(ovnm, ast1sub), _) -> (Changed, beta_reduction ast1sub ovnm res2)
-                       | (Unbox(pvnm, i, ast11, ast12), _)  when not (emerge_free pvnm ast2) ->
-                           (Changed, (Unbox(pvnm, i, ast11, (Apply(ast12, ast2), layer)), layer))
-                       | _ -> delta_reduction (Apply(res1, res2), layer)
-                     end
-               end
-         end
-       else if evlayer > layer then
-         (Stable, ast)
-       else (* if evlayer < layer *)
-         let (state1, res1) = eval evlayer ast1 in
-         begin
-           match state1 with
-           | Changed -> (Changed, (Apply(res1, ast2), layer))
-           | Stable  ->
-               let (state2, res2) = eval evlayer ast2 in
-                 (state2, (Apply(res1, res2), layer))
-         end
+        if evlayer = layer then
+begin print_endline "****APPLY1****" ; (* test *)
+      print_endline ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
+      print_endline ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
+          let (state1, res1) = eval evlayer ast1 in
+          begin
+            match state1 with
+            | Changed -> (Changed, (Apply(res1, ast2), layer))
+            | Stable  ->
+                let (state2, res2) = eval evlayer ast2 in
+                begin
+                  match state2 with
+                  | Changed -> (Changed, (Apply(res1, res2), layer))
+                  | Stable  ->
+                      begin
+                        match res1 with
+                        | (Lambda(ovnm, ast1sub), _) -> (Changed, beta_reduction ast1sub ovnm res2)
+                        | (Unbox(pvnm, i, ast11, ast12), _)  when not (emerge_free pvnm ast2) ->
+                            (Changed, (Unbox(pvnm, i, ast11, (Apply(ast12, ast2), layer)), layer))
+                        | _ -> delta_reduction (Apply(res1, res2), layer)
+                      end
+                end
+          end
+end (* test *)
+        else if evlayer > layer then
+begin print_endline "****APPLY2****" ; (* test *)
+      print_endline ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
+      print_endline ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
+          (Stable, ast)
+end (* test *)
+        else (* if evlayer < layer *)
+begin print_endline "****APPLY3****" ; (* test *)
+      print_endline ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
+      print_endline ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
+          let (state1, res1) = eval evlayer ast1 in
+          begin
+            match state1 with
+            | Changed -> (Changed, (Apply(res1, ast2), layer))
+            | Stable  ->
+                let (state2, res2) = eval evlayer ast2 in
+                  (state2, (Apply(res1, res2), layer))
+          end
+end (* test *)
 
 
 type trial = FirstTrial | AfterFirstTrial
