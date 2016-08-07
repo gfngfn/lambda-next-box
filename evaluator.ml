@@ -155,15 +155,15 @@ let rec eval (evlayer : int) (ast : abstract_tree) =
 
     | FixPoint(ovnm, ast1) ->
         if evlayer = layer then
-begin print_endline "****FIX1****" ; (* test *)
+begin print_for_debug "****FIX1****" ; (* test *)
           (Changed, beta_reduction ast1 ovnm ast)
 end (* test *)
         else if evlayer > layer then
-begin print_endline "****FIX2****" ; (* test *)
+begin print_for_debug "****FIX2****" ; (* test *)
           (Stable, ast)
 end (* test *)
         else (* if evlayer < layer *)
-begin print_endline "****FIX3****" ; (* test *)
+begin print_for_debug "****FIX3****" ; (* test *)
           let (state1, res1) = eval evlayer ast1 in
             (state1, (FixPoint(ovnm, res1), layer))
 end(* test *)
@@ -235,9 +235,9 @@ end(* test *)
 
     | Apply(ast1, ast2) ->
         if evlayer = layer then
-begin print_endline "****APPLY1****" ; (* test *)
-      print_endline ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
-      print_endline ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
+begin print_for_debug "****APPLY1****" ; (* test *)
+      print_for_debug ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
+      print_for_debug ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
           let (state1, res1) = eval evlayer ast1 in
           begin
             match state1 with
@@ -259,15 +259,15 @@ begin print_endline "****APPLY1****" ; (* test *)
           end
 end (* test *)
         else if evlayer > layer then
-begin print_endline "****APPLY2****" ; (* test *)
-      print_endline ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
-      print_endline ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
+begin print_for_debug "****APPLY2****" ; (* test *)
+      print_for_debug ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
+      print_for_debug ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
           (Stable, ast)
 end (* test *)
         else (* if evlayer < layer *)
-begin print_endline "****APPLY3****" ; (* test *)
-      print_endline ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
-      print_endline ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
+begin print_for_debug "****APPLY3****" ; (* test *)
+      print_for_debug ("** " ^ (string_of_abstract_tree ast1)) ; (* test *)
+      print_for_debug ("** " ^ (string_of_abstract_tree ast2)) ; (* test *)
           let (state1, res1) = eval evlayer ast1 in
           begin
             match state1 with
