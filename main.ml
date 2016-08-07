@@ -12,7 +12,12 @@ let _ =
         Range.initialize_for_lexer () ;
         let sast = Parser.main Lexer.expr (Lexing.from_channel fin) in
         let ast = Typecheck.main sast in
-          print_endline (string_of_source_tree sast)
+        begin
+          print_endline "  [SOURCE]" ;
+          print_endline ("    " ^ (string_of_source_tree sast)) ;
+          print_endline "  [AST]" ;
+          print_endline ("    " ^ (string_of_abstract_tree ast)) ;
+        end
       end
     with
     | Lexer.Error(s)      -> print_endline ("! [ERROR in LEXER] " ^ s)

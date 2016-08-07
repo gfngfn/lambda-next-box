@@ -28,7 +28,8 @@ and source_tree_main =
   | SrcIntConst      of int
   | SrcBoolConst     of bool
 
-type abstract_tree =
+type abstract_tree = abstract_tree_main * int
+and abstract_tree_main =
   | OrdContentOf  of variable_name
   | PermContentOf of variable_name
   | Apply         of abstract_tree * abstract_tree
@@ -77,6 +78,25 @@ let rec string_of_source_type (srcty : source_type) =
     | CircleType(tyin)       -> "O" ^ (iter_enclose tyin)
     | BoxType(tyin)          -> "B" ^ (iter_enclose tyin)
     | FuncType(tydom, tycod) -> (iter_enclose tydom) ^ " -> " ^ (iter tycod)
+
+
+let rec string_of_abstract_tree (ast : abstract_tree) =
+  let iter = string_of_abstract_tree in
+  let (astmain, layer) = ast in
+  let strlayer s = "(" ^ (string_of_int layer) ^ "| " ^ s ^ ")" in
+    match astmain with
+    | OrdContentOf(ovnm)           -> strlayer ovnm
+    | PermContentOf(pvnm)          -> strlayer pvnm
+    | Apply(ast1, ast2)            -> strlayer ((iter ast1) ^ " " ^ (iter ast2))
+    | Lambda(ovnm, ast1)           -> strlayer ("\\" ^ ovnm ^ ". " ^ (iter ast1))
+    | FixPoint(ovnm, ast1)         -> strlayer ("fix " ^ ovnm ^ ". " ^ (iter ast1))
+    | IfThenElse(ast0, ast1, ast2) -> strlayer ("if " ^ (iter ast0) ^ " then " ^ (iter ast1) ^ " else " ^ (iter ast2))
+    | Next(ast1)                   -> strlayer ("next " ^ (iter ast1))
+    | Prev(ast1)                   -> strlayer ("prev " ^ (iter ast1))
+    | Box(ast1)                    -> strlayer ("box " ^ (iter ast1))
+    | Unbox(pvnm, i, ast1, ast2)   -> strlayer ("unbox " ^ pvnm ^ " =" ^ (string_of_int i) ^ " " ^ (iter ast1) ^ " in " ^ (iter ast2))
+    | IntConst(ic)                 -> strlayer (string_of_int ic)
+    | BoolConst(bc)                -> strlayer (string_of_bool bc)
 
 
 let rec erase_range_of_source_type (srcty : source_type) =

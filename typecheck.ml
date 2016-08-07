@@ -6,15 +6,15 @@ exception Error of string
 let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast : source_tree) =
   let (sastmain, rng) = sast in
   match sastmain with
-  | SrcIntConst(ic)     -> (IntConst(ic), (IntType, rng), Subst.empty)
-  | SrcBoolConst(bc)    -> (BoolConst(bc), (BoolType, rng), Subst.empty)
+  | SrcIntConst(ic)     -> ((IntConst(ic), layer), (IntType, rng), Subst.empty)
+  | SrcBoolConst(bc)    -> ((BoolConst(bc), layer), (BoolType, rng), Subst.empty)
   | SrcOrdContentOf(varnm) ->
       begin
         try
           let (varlayer, varty) = Typeenv.find tyenvG varnm in
             if varlayer = layer then
               let (tyresmain, _) = erase_range_of_source_type varty in
-                (OrdContentOf(varnm), (tyresmain, rng), Subst.empty)
+                ((OrdContentOf(varnm), layer), (tyresmain, rng), Subst.empty)
             else
               raise (Error
                        ("at " ^ (Range.to_string rng) ^ ":\n" ^
@@ -32,7 +32,7 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
           let (varlayer, varty) = Typeenv.find tyenvD varnm in
             if varlayer <= layer then
               let (tyresmain, _) = erase_range_of_source_type varty in
-                (PermContentOf(varnm), (tyresmain, rng), Subst.empty)
+                ((PermContentOf(varnm), layer), (tyresmain, rng), Subst.empty)
             else
               raise (Error
                        ("at " ^ (Range.to_string rng) ^ ":\n" ^
@@ -53,12 +53,12 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
         | (FuncType(tydom1, tycod1), _) ->
             let thetares = Subst.compose_list [Subst.unify ty2 tydom1; theta2; theta1] in
             let tyres = Subst.apply_to_source_type thetares tycod1 in
-              (Apply(e1, e2), tyres, thetares)
+              ((Apply(e1, e2), layer), tyres, thetares)
         | _ ->
             let alpha = Typeenv.fresh_source_type_variable rng in
             let thetares = Subst.compose_list [Subst.unify ty1 (FuncType(ty2, alpha), Range.dummy "app"); theta2; theta1] in
             let tyres = Subst.apply_to_source_type thetares alpha in
-              (Apply(e1, e2), tyres, thetares)
+              ((Apply(e1, e2), layer), tyres, thetares)
       end
 
   | SrcLambda((varnm, varrng), sastin) ->
@@ -67,7 +67,7 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
       let (ein, tyin, thetain) = typecheck tyenvD tyenvGin layer sastin in
       let tydomres = Subst.apply_to_source_type thetain alpha in
       let tyres = (FuncType(tydomres, tyin), rng) in
-        (Lambda(varnm, ein), tyres, thetain)
+        ((Lambda(varnm, ein), layer), tyres, thetain)
 
   | SrcFixPoint((varnm, varrng), sastin) ->
       let alpha = Typeenv.fresh_source_type_variable (Range.dummy "fixpoint") in
@@ -75,7 +75,7 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
       let (ein, tyin, thetain) = typecheck tyenvD tyenvGin layer sastin in
         let thetares = Subst.compose (Subst.unify alpha tyin) thetain in
         let tyres = Subst.apply_to_source_type thetares alpha in
-          (FixPoint(varnm, ein), tyres, thetares)
+          ((FixPoint(varnm, ein), layer), tyres, thetares)
 
   | SrcIfThenElse(sast0, sast1, sast2) ->
       let (e0, ty0, theta0) = typecheck tyenvD tyenvG layer sast0 in
@@ -85,27 +85,27 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
         let thetabrch = Subst.unify ty1 ty2 in
         let thetares = Subst.compose_list [thetabrch; theta2; theta1; thetabool; theta0] in
         let tyres = Subst.apply_to_source_type thetares ty1 in
-          (IfThenElse(e0, e1, e2), tyres, thetares)
+          ((IfThenElse(e0, e1, e2), layer), tyres, thetares)
 
   | SrcNext(sast1) ->
       let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer + 1) sast1 in
-        (Next(e1), (CircleType(ty1), rng), theta1)
+        ((Next(e1), layer), (CircleType(ty1), rng), theta1)
 
   | SrcPrev(sast1) ->
       let (_, rng1) = sast1 in
       let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer - 1) sast1 in
       begin
         match ty1 with
-        | (CircleType(tyin), _) -> (Prev(e1), tyin, theta1)
+        | (CircleType(tyin), _) -> ((Prev(e1), layer), tyin, theta1)
         | _                     ->
             let alpha = Typeenv.fresh_source_type_variable rng1 in
             let thetares = Subst.compose (Subst.unify ty1 (CircleType(alpha), Range.dummy "prev")) theta1 in
-              (Prev(e1), Subst.apply_to_source_type thetares alpha, thetares)
+              ((Prev(e1), layer), Subst.apply_to_source_type thetares alpha, thetares)
       end
 
   | SrcBox(sast1) ->
       let (e1, ty1, theta1) = typecheck tyenvD tyenvG layer sast1 in
-        (Box(e1), (BoxType(ty1), rng), theta1)
+        ((Box(e1), layer), (BoxType(ty1), rng), theta1)
 
   | SrcUnbox((pvnm, _), downi, sast1, sast2) ->
       let (_, rng1) = sast1 in
@@ -117,14 +117,14 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
             let (e2, ty2, theta2) = typecheck tyenvDin tyenvG layer sast2 in
             let thetares = Subst.compose theta2 theta1 in
             let tyres = Subst.apply_to_source_type thetares ty2 in
-              (Unbox(pvnm, downi, e1, e2), tyres, thetares)
+              ((Unbox(pvnm, downi, e1, e2), layer), tyres, thetares)
         | _ ->
             let alpha = Typeenv.fresh_source_type_variable rng1 in
             let tyenvDin = Typeenv.add tyenvD pvnm (layer + downi) alpha in
             let (e2, ty2, theta2) = typecheck tyenvDin tyenvG layer sast2 in
             let thetares = Subst.compose_list [theta2; Subst.unify ty1 (BoxType(alpha), Range.dummy "unbox") ; theta1] in
             let tyres = Subst.apply_to_source_type thetares ty2 in
-            (Unbox(pvnm, downi, e1, e2), tyres, thetares)
+            ((Unbox(pvnm, downi, e1, e2), layer), tyres, thetares)
       end
 
 
