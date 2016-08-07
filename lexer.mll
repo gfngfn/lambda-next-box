@@ -58,12 +58,3 @@ rule expr = parse
       }
   | eof { EOI }
   | _ as c { raise (Error("illegal token '" ^ (String.make 1 c) ^ "'")) }
-
-
-{
-  let main lexbuf =
-    begin
-      Range.initialize_for_lexer () ;
-      expr lexbuf
-    end
-}

@@ -77,3 +77,14 @@ let rec string_of_source_type (srcty : source_type) =
     | CircleType(tyin)       -> "O" ^ (iter_enclose tyin)
     | BoxType(tyin)          -> "B" ^ (iter_enclose tyin)
     | FuncType(tydom, tycod) -> (iter_enclose tydom) ^ " -> " ^ (iter tycod)
+
+
+let rec erase_range_of_source_type (srcty : source_type) =
+  let (srctymain, _) = srcty in
+  let iter = erase_range_of_source_type in
+  let dr = Range.dummy "erased" in
+    match srctymain with
+    | FuncType(tydom, tycod) -> (FuncType(iter tydom, iter tycod), dr)
+    | CircleType(tyin)       -> (CircleType(iter tyin), dr)
+    | BoxType(tyin)          -> (BoxType(iter tyin), dr)
+    | _                      -> (srctymain, dr)

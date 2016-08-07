@@ -11,9 +11,10 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
   | SrcOrdContentOf(varnm) ->
       begin
         try
-          let (varlayer, (tyresmain, _)) = Typeenv.find tyenvG varnm in
+          let (varlayer, varty) = Typeenv.find tyenvG varnm in
             if varlayer = layer then
-              (OrdContentOf(varnm), (tyresmain, rng), Subst.empty)
+              let (tyresmain, _) = erase_range_of_source_type varty in
+                (OrdContentOf(varnm), (tyresmain, rng), Subst.empty)
             else
               raise (Error
                        ("at " ^ (Range.to_string rng) ^ ":\n" ^
@@ -28,9 +29,10 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
   | SrcPermContentOf(varnm) ->
       begin
         try
-          let (varlayer, (tyresmain, _)) = Typeenv.find tyenvD varnm in
+          let (varlayer, varty) = Typeenv.find tyenvD varnm in
             if varlayer <= layer then
-              (PermContentOf(varnm), (tyresmain, rng), Subst.empty)
+              let (tyresmain, _) = erase_range_of_source_type varty in
+                (PermContentOf(varnm), (tyresmain, rng), Subst.empty)
             else
               raise (Error
                        ("at " ^ (Range.to_string rng) ^ ":\n" ^
@@ -60,7 +62,7 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
       end
 
   | SrcLambda((varnm, varrng), sastin) ->
-      let alpha = Typeenv.fresh_source_type_variable varrng in
+      let alpha = Typeenv.fresh_source_type_variable (Range.dummy "lambda") in
       let tyenvGin = Typeenv.add tyenvG varnm layer alpha in
       let (ein, tyin, thetain) = typecheck tyenvD tyenvGin layer sastin in
       let tydomres = Subst.apply_to_source_type thetain alpha in
@@ -68,7 +70,7 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
         (Lambda(varnm, ein), tyres, thetain)
 
   | SrcFixPoint((varnm, varrng), sastin) ->
-      let alpha = Typeenv.fresh_source_type_variable varrng in
+      let alpha = Typeenv.fresh_source_type_variable (Range.dummy "fixpoint") in
       let tyenvGin = Typeenv.add tyenvG varnm layer alpha in
       let (ein, tyin, thetain) = typecheck tyenvD tyenvGin layer sastin in
         let thetares = Subst.compose (Subst.unify alpha tyin) thetain in
@@ -92,12 +94,38 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
   | SrcPrev(sast1) ->
       let (_, rng1) = sast1 in
       let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer - 1) sast1 in
+      begin
         match ty1 with
         | (CircleType(tyin), _) -> (Prev(e1), tyin, theta1)
         | _                     ->
             let alpha = Typeenv.fresh_source_type_variable rng1 in
             let thetares = Subst.compose (Subst.unify ty1 (CircleType(alpha), Range.dummy "prev")) theta1 in
               (Prev(e1), Subst.apply_to_source_type thetares alpha, thetares)
+      end
+
+  | SrcBox(sast1) ->
+      let (e1, ty1, theta1) = typecheck tyenvD tyenvG layer sast1 in
+        (Box(e1), (BoxType(ty1), rng), theta1)
+
+  | SrcUnbox((pvnm, _), downi, sast1, sast2) ->
+      let (_, rng1) = sast1 in
+      let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer + downi) sast1 in
+      begin
+        match ty1 with
+        | (BoxType(tyin), _) ->
+            let tyenvDin = Typeenv.add tyenvD pvnm (layer + downi) tyin in
+            let (e2, ty2, theta2) = typecheck tyenvDin tyenvG layer sast2 in
+            let thetares = Subst.compose theta2 theta1 in
+            let tyres = Subst.apply_to_source_type thetares ty2 in
+              (Unbox(pvnm, downi, e1, e2), tyres, thetares)
+        | _ ->
+            let alpha = Typeenv.fresh_source_type_variable rng1 in
+            let tyenvDin = Typeenv.add tyenvD pvnm (layer + downi) alpha in
+            let (e2, ty2, theta2) = typecheck tyenvDin tyenvG layer sast2 in
+            let thetares = Subst.compose_list [theta2; Subst.unify ty1 (BoxType(alpha), Range.dummy "unbox") ; theta1] in
+            let tyres = Subst.apply_to_source_type thetares ty2 in
+            (Unbox(pvnm, downi, e1, e2), tyres, thetares)
+      end
 
 
 let main sast =
