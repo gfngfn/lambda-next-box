@@ -12,11 +12,14 @@ let _ =
         Range.initialize_for_lexer () ;
         let sast = Parser.main Lexer.expr (Lexing.from_channel fin) in
         let ast = Typecheck.main sast in
+        let (_, res) = Evaluator.eval 0 ast in
         begin
           print_endline "  [SOURCE]" ;
           print_endline ("    " ^ (string_of_source_tree sast)) ;
           print_endline "  [AST]" ;
           print_endline ("    " ^ (string_of_abstract_tree ast)) ;
+          print_endline "  [EVAL]" ;
+          print_endline ("    " ^ (string_of_abstract_tree res))
         end
       end
     with

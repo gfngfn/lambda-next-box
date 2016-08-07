@@ -92,16 +92,21 @@ let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast 
         ((Next(e1), layer), (CircleType(ty1), rng), theta1)
 
   | SrcPrev(sast1) ->
-      let (_, rng1) = sast1 in
-      let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer - 1) sast1 in
-      begin
-        match ty1 with
-        | (CircleType(tyin), _) -> ((Prev(e1), layer), tyin, theta1)
-        | _                     ->
-            let alpha = Typeenv.fresh_source_type_variable rng1 in
-            let thetares = Subst.compose (Subst.unify ty1 (CircleType(alpha), Range.dummy "prev")) theta1 in
-              ((Prev(e1), layer), Subst.apply_to_source_type thetares alpha, thetares)
-      end
+      if layer <= 0 then
+        raise (Error
+                 ("at " ^ (Range.to_string rng) ^ ":\n" ^
+                     "    cannot use 'prev ...' at layer 0"))
+      else
+        let (_, rng1) = sast1 in
+        let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer - 1) sast1 in
+        begin
+          match ty1 with
+          | (CircleType(tyin), _) -> ((Prev(e1), layer), tyin, theta1)
+          | _                     ->
+              let alpha = Typeenv.fresh_source_type_variable rng1 in
+              let thetares = Subst.compose (Subst.unify ty1 (CircleType(alpha), Range.dummy "prev")) theta1 in
+                ((Prev(e1), layer), Subst.apply_to_source_type thetares alpha, thetares)
+        end
 
   | SrcBox(sast1) ->
       let (e1, ty1, theta1) = typecheck tyenvD tyenvG layer sast1 in
