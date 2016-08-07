@@ -111,6 +111,8 @@ and unify_sub tystr1 tystr2 =
     match (tystrmain1, tystrmain2) with
     | (IntType, IntType)                                            -> empty
     | (BoolType, BoolType)                                          -> empty
+    | (CircleType(tyin1), CircleType(tyin2))                        -> unify_sub tyin1 tyin2
+    | (BoxType(tyin1), BoxType(tyin2))                              -> unify_sub tyin1 tyin2
     | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2))          -> compose (unify_sub tycod1 tycod2) (unify_sub tydom1 tydom2)
 
     | (TypeVariable(tvid1), TypeVariable(tvid2)) when tvid1 = tvid2 -> empty

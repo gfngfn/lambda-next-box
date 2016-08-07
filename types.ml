@@ -10,6 +10,8 @@ and source_type_main =
   | IntType
   | BoolType
   | FuncType     of source_type * source_type
+  | CircleType   of source_type
+  | BoxType      of source_type
 
 type source_tree = source_tree_main * Range.t
 and source_tree_main =
@@ -57,19 +59,18 @@ let rec string_of_source_tree sast =
     | SrcBoolConst(bc)                      -> string_of_bool bc
 
 
-let rec string_of_source_type srcty =
+let rec string_of_source_type (srcty : source_type) =
   let iter = string_of_source_type in
+  let iter_enclose srcty =
+    match srcty with
+    | (FuncType(_, _), _) -> "(" ^ (iter srcty) ^ ")"
+    | _                   -> iter srcty
+  in
   let (srctymain, _) = srcty in
     match srctymain with
     | TypeVariable(i)        -> "'" ^ (string_of_int i)
     | IntType                -> "int"
     | BoolType               -> "bool"
-    | FuncType(tydom, tycod) ->
-        begin
-          let (strdom, strcod) =
-            match tydom with
-            | (FuncType(_, _), _) -> ("(" ^ (iter tydom) ^ ")", iter tycod)
-            | _                   -> (iter tydom, iter tycod)
-          in
-            strdom ^ " -> " ^ strcod
-        end
+    | CircleType(tyin)       -> "O" ^ (iter_enclose tyin)
+    | BoxType(tyin)          -> "B" ^ (iter_enclose tyin)
+    | FuncType(tydom, tycod) -> (iter_enclose tydom) ^ " -> " ^ (iter tycod)
