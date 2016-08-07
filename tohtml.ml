@@ -31,9 +31,9 @@ let main (outputfun : string -> unit) (tracelst : abstract_tree list) =
     outputfun "    <title>A Trace of Reduction (CBV)</title>\n" ;
     outputfun "    <link rel=\"stylesheet\" media=\"all\" href=\"lambda-next-box-trace.css\">\n" ;
     outputfun "  </head>\n" ;
-    outputfun "  <body>\n" ;
+    outputfun "  <body><div class=\"container\">\n" ;
     List.iter (fun ast -> outputfun ("    " ^ (html_of_abstract_tree ast) ^ "<br>\n")) tracelst ;
-    outputfun "  </body>\n" ;
+    outputfun "  </div></body>\n" ;
     outputfun "</html>\n"
   end
 

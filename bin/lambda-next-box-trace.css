@@ -1,0 +1,37 @@
+@charset "UTF-8";
+
+body {
+    width: 2000px;
+    overflow: scroll;
+}
+
+.container {
+    border-style: dotted;
+    border-color: #AAAAAA;
+}
+
+.token {
+    font-family: sans-serif;
+    color: #0000AA;
+}
+.single {
+    font-family: sans-serif;
+    color: #222222;
+}
+
+div {
+    display: inline-block;
+    padding: 1pt;
+    border-width: 1pt;
+    border-style: solid;
+    margin: 1pt;
+}
+
+.ast0 {
+    background-color: #88FF88;
+    border-color: #44AA44;
+}
+.ast1 {
+    background-color: #FFFF88;
+    border-color: #AAAA44;
+}
