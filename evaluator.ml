@@ -64,6 +64,74 @@ let rec emerge_free (varnm : variable_name) (ast : abstract_tree) =
     | BoolConst(_)                                  -> false
 
 
+let rec collect_free_variable (ast : abstract_tree) =
+  let iter = collect_free_variable in
+  let omit varnm = List.filter (fun v -> v <> varnm) in
+  let (astmain, _) = ast in
+    match astmain with
+    | OrdContentOf(ovnm)                -> [ovnm]
+    | PermContentOf(pvnm)               -> [pvnm]
+    | Apply(ast1, ast2)                 -> List.append (iter ast1) (iter ast2)
+    | Lambda(ovnm, ast1)                -> omit ovnm (iter ast1)
+    | FixPoint(ovnm, ast1)              -> omit ovnm (iter ast1)
+    | IfThenElse(ast0, ast1, ast2)      -> List.concat [(iter ast0); (iter ast1); (iter ast2)]
+    | Next(ast1)                        -> iter ast1
+    | Prev(ast1)                        -> iter ast1
+    | Box(ast1)                         -> iter ast1
+    | Unbox(pvnm, _, ast1, ast2)        -> List.append (iter ast1) (omit pvnm (iter ast2))
+    | IntConst(_)                       -> []
+    | BoolConst(_)                      -> []
+
+
+let fresh_variable_id : int ref = ref 0
+
+
+let initialize () =
+  fresh_variable_id := 0
+
+
+let fresh_variable_name () =
+  let resnm = "_symb" ^ (string_of_int !fresh_variable_id) in
+  begin
+    fresh_variable_id := !fresh_variable_id + 1 ;
+    resnm
+  end
+
+
+let rec alpha_renaming (prohiblst : variable_name list) (ast : abstract_tree) =
+  let iter = alpha_renaming prohiblst in
+  let (astmain, layer) = ast in
+    match astmain with
+    | OrdContentOf(_)              -> ast
+    | PermContentOf(_)             -> ast
+    | Apply(ast1, ast2)            -> (Apply(iter ast1, iter ast2), layer)
+    | Lambda(ovnm, ast1)
+      when List.mem ovnm prohiblst ->
+        let ovnmnew = fresh_variable_name () in
+        let ast1new = replace ast1 ovnm (OrdContentOf(ovnmnew), layer) in
+          (Lambda(ovnmnew, iter ast1new), layer)
+    | Lambda(ovnm, ast1)           -> (Lambda(ovnm, iter ast1), layer)
+    | FixPoint(ovnm, ast1)
+      when List.mem ovnm prohiblst ->
+        let ovnmnew = fresh_variable_name () in
+        let ast1new = replace ast1 ovnm (OrdContentOf(ovnmnew), layer) in
+          (FixPoint(ovnmnew, iter ast1new), layer)
+    | FixPoint(ovnm, ast1)         -> (FixPoint(ovnm, iter ast1), layer)
+    | IfThenElse(ast0, ast1, ast2) -> (IfThenElse(iter ast0, iter ast1, iter ast2), layer)
+    | Next(ast1)                   -> (Next(iter ast1), layer)
+    | Prev(ast1)                   -> (Prev(iter ast1), layer)
+    | Box(ast1)                    -> (Box(iter ast1), layer)
+    | Unbox(pvnm, i, ast1, ast2)   -> (Unbox(pvnm, i, iter ast1, iter ast2), layer)
+    | IntConst(_)                  -> ast
+    | BoolConst(_)                 -> ast
+
+
+let rec beta_reduction (ast1 : abstract_tree) (varnm : variable_name) (ast2 : abstract_tree) =
+  let freevarlst = collect_free_variable ast2 in
+  let ast1new = alpha_renaming freevarlst ast1 in
+    replace ast1new varnm ast2
+
+
 let rec eval (evlayer : int) (ast : abstract_tree) =
   let (astmain, layer) = ast in
     match astmain with
@@ -165,7 +233,7 @@ let rec eval (evlayer : int) (ast : abstract_tree) =
                  | Stable  ->
                      begin
                        match res1 with
-                       | (Lambda(ovnm, ast1sub), _) -> (Changed, replace ast1sub ovnm res2)
+                       | (Lambda(ovnm, ast1sub), _) -> (Changed, beta_reduction ast1sub ovnm res2)
                        | (Unbox(pvnm, i, ast11, ast12), _)  when not (emerge_free pvnm ast2) ->
                            (Changed, (Unbox(pvnm, i, ast11, (Apply(ast12, ast2), layer)), layer))
                        | _ -> delta_reduction (Apply(res1, res2), layer)
@@ -183,3 +251,17 @@ let rec eval (evlayer : int) (ast : abstract_tree) =
                let (state2, res2) = eval evlayer ast2 in
                  (state2, (Apply(res1, res2), layer))
          end
+
+
+type trial = FirstTrial | AfterFirstTrial
+
+
+let main (ast : abstract_tree) =
+  let rec routine (tr : trial) (layer : int) (ast : abstract_tree) =
+    let (state, res) = eval layer ast in
+      match (tr, state) with
+      | (_, Changed)              -> routine AfterFirstTrial layer res
+      | (FirstTrial, Stable)      -> res
+      | (AfterFirstTrial, Stable) -> routine FirstTrial (layer + 1) res
+  in
+    routine FirstTrial 0 ast

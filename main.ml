@@ -10,9 +10,10 @@ let _ =
       let fin = open_in filename_in in
       begin
         Range.initialize_for_lexer () ;
+        Evaluator.initialize () ;
         let sast = Parser.main Lexer.expr (Lexing.from_channel fin) in
         let ast = Typecheck.main sast in
-        let (_, res) = Evaluator.eval 0 ast in
+        let res = Evaluator.main ast in
         begin
           print_endline "  [SOURCE]" ;
           print_endline ("    " ^ (string_of_source_tree sast)) ;
