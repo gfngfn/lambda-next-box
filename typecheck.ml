@@ -3,26 +3,49 @@ open Types
 exception Error of string
 
 
-let rec typecheck (tyenv : Typeenv.t) (sast : source_tree) =
+let rec typecheck (tyenvD : Typeenv.t) (tyenvG : Typeenv.t) (layer : int) (sast : source_tree) =
   let (sastmain, rng) = sast in
   match sastmain with
   | SrcIntConst(ic)     -> (IntConst(ic), (IntType, rng), Subst.empty)
   | SrcBoolConst(bc)    -> (BoolConst(bc), (BoolType, rng), Subst.empty)
-  | SrcContentOf(varnm) ->
+  | SrcOrdContentOf(varnm) ->
       begin
         try
-          let (tyresmain, _) = Typeenv.find tyenv varnm in
-            (ContentOf(varnm), (tyresmain, rng), Subst.empty)
+          let (varlayer, (tyresmain, _)) = Typeenv.find tyenvG varnm in
+            if varlayer = layer then
+              (OrdContentOf(varnm), (tyresmain, rng), Subst.empty)
+            else
+              raise (Error
+                       ("at " ^ (Range.to_string rng) ^ ":\n" ^
+                           "    ordinary variable '" ^ varnm ^ "' is defined for layer " ^ (string_of_int varlayer) ^ ",\n" ^
+                           "    and thereby cannot be used for layer " ^ (string_of_int layer)))
         with
         | Not_found ->
-           raise (Error
-             ("at " ^ (Range.to_string rng) ^ ":\n" ^
-               "    undefined variable '" ^ varnm ^ "'"))
+            raise (Error
+                     ("at " ^ (Range.to_string rng) ^ ":\n" ^
+                         "    undefined variable '" ^ varnm ^ "'"))
+      end
+  | SrcPermContentOf(varnm) ->
+      begin
+        try
+          let (varlayer, (tyresmain, _)) = Typeenv.find tyenvD varnm in
+            if varlayer <= layer then
+              (PermContentOf(varnm), (tyresmain, rng), Subst.empty)
+            else
+              raise (Error
+                       ("at " ^ (Range.to_string rng) ^ ":\n" ^
+                           "    permanent variable '" ^ varnm ^ "' is defined for layer >= " ^ (string_of_int varlayer) ^ ",\n" ^
+                           "    and thereby cannot be used for layer " ^ (string_of_int layer)))
+        with
+        | Not_found ->
+            raise (Error
+                     ("at " ^ (Range.to_string rng) ^ ":\n" ^
+                         "    undefined variable '" ^ varnm ^ "'"))
       end
 
   | SrcApply(sast1, sast2) ->
-      let (e1, ty1, theta1) = typecheck tyenv sast1 in
-      let (e2, ty2, theta2) = typecheck tyenv sast2 in
+      let (e1, ty1, theta1) = typecheck tyenvD tyenvG layer sast1 in
+      let (e2, ty2, theta2) = typecheck tyenvD tyenvG layer sast2 in
       begin
         match ty1 with
         | (FuncType(tydom1, tycod1), _) ->
@@ -38,34 +61,48 @@ let rec typecheck (tyenv : Typeenv.t) (sast : source_tree) =
 
   | SrcLambda((varnm, varrng), sastin) ->
       let alpha = Typeenv.fresh_source_type_variable varrng in
-      let tyenvin = Typeenv.add tyenv varnm alpha in
-      let (ein, tyin, thetain) = typecheck tyenvin sastin in
+      let tyenvGin = Typeenv.add tyenvG varnm layer alpha in
+      let (ein, tyin, thetain) = typecheck tyenvD tyenvGin layer sastin in
       let tydomres = Subst.apply_to_source_type thetain alpha in
       let tyres = (FuncType(tydomres, tyin), rng) in
         (Lambda(varnm, ein), tyres, thetain)
 
   | SrcFixPoint((varnm, varrng), sastin) ->
       let alpha = Typeenv.fresh_source_type_variable varrng in
-      let tyenvnew = Typeenv.add tyenv varnm alpha in
-      let (ein, tyin, thetain) = typecheck tyenvnew sastin in
+      let tyenvGin = Typeenv.add tyenvG varnm layer alpha in
+      let (ein, tyin, thetain) = typecheck tyenvD tyenvGin layer sastin in
         let thetares = Subst.compose (Subst.unify alpha tyin) thetain in
         let tyres = Subst.apply_to_source_type thetares alpha in
           (FixPoint(varnm, ein), tyres, thetares)
 
   | SrcIfThenElse(sast0, sast1, sast2) ->
-      let (e0, ty0, theta0) = typecheck tyenv sast0 in
-      let (e1, ty1, theta1) = typecheck tyenv sast1 in
-      let (e2, ty2, theta2) = typecheck tyenv sast2 in
+      let (e0, ty0, theta0) = typecheck tyenvD tyenvG layer sast0 in
+      let (e1, ty1, theta1) = typecheck tyenvD tyenvG layer sast1 in
+      let (e2, ty2, theta2) = typecheck tyenvD tyenvG layer sast2 in
         let thetabool = Subst.unify ty0 (BoolType, Range.dummy "if") in
         let thetabrch = Subst.unify ty1 ty2 in
         let thetares = Subst.compose_list [thetabrch; theta2; theta1; thetabool; theta0] in
         let tyres = Subst.apply_to_source_type thetares ty1 in
           (IfThenElse(e0, e1, e2), tyres, thetares)
 
+  | SrcNext(sast1) ->
+      let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer + 1) sast1 in
+        (Next(e1), (CircleType(ty1), rng), theta1)
+
+  | SrcPrev(sast1) ->
+      let (_, rng1) = sast1 in
+      let (e1, ty1, theta1) = typecheck tyenvD tyenvG (layer - 1) sast1 in
+        match ty1 with
+        | (CircleType(tyin), _) -> (Prev(e1), tyin, theta1)
+        | _                     ->
+            let alpha = Typeenv.fresh_source_type_variable rng1 in
+            let thetares = Subst.compose (Subst.unify ty1 (CircleType(alpha), Range.dummy "prev")) theta1 in
+              (Prev(e1), Subst.apply_to_source_type thetares alpha, thetares)
+
 
 let main sast =
     try
-      let (e, ty, theta) = typecheck Primitives.type_environment sast in
+      let (e, ty, theta) = typecheck Primitives.permanent_type_environment Primitives.ordinary_type_environment 0 sast in
         Subst.apply_to_abstract_tree theta e
     with
     | Subst.UnificationInclusionError(tvid, ty1, ty2) ->

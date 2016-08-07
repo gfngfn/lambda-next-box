@@ -15,7 +15,7 @@
   let binary_operator left op right =
     let (opnm, oprng) = op in
     let rng = make_range (Source left) (Source right) in
-      (SrcApply((SrcApply((SrcContentOf(opnm), oprng), left), Range.dummy "lor"), right), rng)
+      (SrcApply((SrcApply((SrcPermContentOf(opnm), oprng), left), Range.dummy "lor"), right), rng)
 
 %}
 
@@ -114,8 +114,8 @@ xpbot:
   | INTCONST              { let (numstr, rng) = $1 in (SrcIntConst(int_of_string numstr), rng) }
   | TRUE                  { (SrcBoolConst(true), $1) }
   | FALSE                 { (SrcBoolConst(false), $1) }
-  | OVAR                  { let (ovnm, rng) = $1 in (SrcContentOf(ovnm), rng) }
-  | PVAR                  { let (pvnm, rng) = $1 in (SrcContentOf(pvnm), rng) }
-  | LPAREN binop RPAREN   { let (opnm, _) = $2 in (SrcContentOf(opnm), make_range (Token $1) (Token $3)) }
+  | OVAR                  { let (ovnm, rng) = $1 in (SrcOrdContentOf(ovnm), rng) }
+  | PVAR                  { let (pvnm, rng) = $1 in (SrcPermContentOf(pvnm), rng) }
+  | LPAREN binop RPAREN   { let (opnm, _) = $2 in (SrcPermContentOf(opnm), make_range (Token $1) (Token $3)) }
   | LPAREN xplet RPAREN   { let (utastmain, _) = $2 in (utastmain, make_range (Token $1) (Token $3)) }
 ;

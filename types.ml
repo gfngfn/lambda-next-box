@@ -15,37 +15,40 @@ and source_type_main =
 
 type source_tree = source_tree_main * Range.t
 and source_tree_main =
-  | SrcContentOf  of variable_name
-  | SrcApply      of source_tree * source_tree
-  | SrcLambda     of (variable_name * Range.t) * source_tree
-  | SrcFixPoint   of (variable_name * Range.t) * source_tree
-  | SrcIfThenElse of source_tree * source_tree * source_tree
-  | SrcNext       of source_tree
-  | SrcPrev       of source_tree
-  | SrcBox        of source_tree
-  | SrcUnbox      of (variable_name * Range.t) * int * source_tree * source_tree
-  | SrcIntConst   of int
-  | SrcBoolConst  of bool
+  | SrcOrdContentOf  of variable_name
+  | SrcPermContentOf of variable_name
+  | SrcApply         of source_tree * source_tree
+  | SrcLambda        of (variable_name * Range.t) * source_tree
+  | SrcFixPoint      of (variable_name * Range.t) * source_tree
+  | SrcIfThenElse    of source_tree * source_tree * source_tree
+  | SrcNext          of source_tree
+  | SrcPrev          of source_tree
+  | SrcBox           of source_tree
+  | SrcUnbox         of (variable_name * Range.t) * int * source_tree * source_tree
+  | SrcIntConst      of int
+  | SrcBoolConst     of bool
 
 type abstract_tree =
-  | ContentOf  of variable_name
-  | Apply      of abstract_tree * abstract_tree
-  | Lambda     of variable_name * abstract_tree
-  | FixPoint   of variable_name * abstract_tree
-  | IfThenElse of abstract_tree * abstract_tree * abstract_tree
-  | Next       of abstract_tree
-  | Prev       of abstract_tree
-  | Box        of abstract_tree
-  | Unbox      of variable_name * int * abstract_tree * abstract_tree
-  | IntConst   of int
-  | BoolConst  of bool
+  | OrdContentOf  of variable_name
+  | PermContentOf of variable_name
+  | Apply         of abstract_tree * abstract_tree
+  | Lambda        of variable_name * abstract_tree
+  | FixPoint      of variable_name * abstract_tree
+  | IfThenElse    of abstract_tree * abstract_tree * abstract_tree
+  | Next          of abstract_tree
+  | Prev          of abstract_tree
+  | Box           of abstract_tree
+  | Unbox         of variable_name * int * abstract_tree * abstract_tree
+  | IntConst      of int
+  | BoolConst     of bool
 
 
 let rec string_of_source_tree sast =
   let iter = string_of_source_tree in
   let (sastmain, _) = sast in
     match sastmain with
-    | SrcContentOf(varnm)                   -> varnm
+    | SrcOrdContentOf(varnm)                -> varnm
+    | SrcPermContentOf(varnm)               -> varnm
     | SrcApply(sast1, sast2)                -> "(" ^ (iter sast1) ^ " " ^ (iter sast2) ^ ")"
     | SrcLambda((varnm, _), sast1)          -> "(\\" ^ varnm ^ ". " ^ (iter sast1) ^ ")"
     | SrcFixPoint((varnm, _), sast1)        -> "(fix " ^ varnm ^ ". " ^ (iter sast1) ^ ")"
