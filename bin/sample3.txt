@@ -1,0 +1,10 @@
+let powaux = fix powaux. \n. \x.
+  if n <= 0 then next 1 else
+    if (n / 2) * 2 == n then
+      let r = powaux (n / 2) x in
+        next ((\s. s * s) (prev r))
+    else
+      let r = powaux ((n - 1) / 2) x in
+        next ((\s. (prev x) * s * s) (prev r))
+in
+  next (\x. prev (powaux 4 (next x)))

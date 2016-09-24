@@ -9,3 +9,4 @@ parser.output
 *.cmi
 bin/lambda-next-box
 *.html
+*.exe
